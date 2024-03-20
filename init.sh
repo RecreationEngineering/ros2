@@ -1,4 +1,9 @@
 #! /usr/bin/env bash
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run this script with sudo."
+    exit 1
+fi
+
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo $ROOT
 
@@ -52,30 +57,54 @@ else
 		$SUDO tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
 	sed -i -e '/experimental/ s/^#//g' /etc/apt/sources.list.d/nvidia-container-toolkit.list
-	sudo apt-get update
-	sudo apt-get install -y nvidia-container-toolkit
+	$SUDO apt-get update
+	$SUDO apt-get install -y nvidia-container-toolkit
 
-	sudo nvidia-ctk runtime configure --runtime=docker
-	sudo systemctl restart docker
+	$SUDO nvidia-ctk runtime configure --runtime=docker
+	$SUDO systemctl restart docker
 fi
 
 # run the container
 ARCH=$(uname -i)
 CONTAINER=lozanomt/ubuntu:ros2-iron
+CONTAINER_NAME="ros2-iron"
 
 if [ $ARCH = "aarch64" ]; then
 	set -x
-	$SUDO docker run --runtime nvidia -it --network host \
+	$SUDO docker ps -f "name=$CONTAINER_NAME" --format '{{.Status}}'
+	if $SUDO docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
+		if $SUDO docker ps -f "name=$CONTAINER_NAME" --format '{{.Status}}' | grep -q "Up"; then
+			$SUDO docker exec -it $CONTAINER_NAME bash
+		else
+			echo "Starting container instance"
+			$SUDO docker start -it $CONTAINER_NAME
+		fi
+	else
+		$SUDO docker run --runtime nvidia -it --rm --name $CONTAINER_NAME --network host \
 		--privileged \
+		--volume $ROOT:/ros2_ws \ 
 		$DISPLAY_DEVICE \
         $V4L2_DEVICES \
 		$CONTAINER
+	fi
 
 elif [ $ARCH = "x86_64" ]; then
 	set -x
-	$SUDO docker run --gpus all -it --network host \
+
+	$SUDO docker ps -f "name=$CONTAINER_NAME" --format '{{.Status}}'
+	if $SUDO docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
+		if $SUDO docker ps -f "name=$CONTAINER_NAME" --format '{{.Status}}' | grep -q "Up"; then
+			$SUDO docker exec -it $CONTAINER_NAME bash
+		else
+			echo "Starting container instance"
+			$SUDO docker start -ai $CONTAINER_NAME
+		fi
+	else
+		$SUDO docker run --gpus all -it --rm --name ros2-iron --network host \
 		--privileged \
+		--volume $ROOT:/ros2_ws \
 		$DISPLAY_DEVICE \
 		$V4L2_DEVICES \
 		$CONTAINER
+	fi
 fi

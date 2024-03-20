@@ -19,6 +19,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
         ffmpeg \
         python3 \
         python3-pip \
+        --fix-missing \
         && rm -rf /var/lib/apt/lists/*
 
 ##########################################
@@ -95,13 +96,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ##########################################
 
     # Copy your source code into the container
-    RUN mkdir -p /workspace/src \
-        && cd /workspace/
+    RUN mkdir -p /ros2_ws/src \
+        && cd /ros2_ws/ \
+        && colcon build
 
     # COPY . /catkin_ws
     
     # Set up a working directory
-    WORKDIR /workspace
+    WORKDIR /ros2_ws
 
     # RUN g++ src/main.cpp -o main $(pkg-config --cflags --libs gstreamer-1.0) -std=c++11
 
