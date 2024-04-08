@@ -1,0 +1,3 @@
+[submodule "src/ros2_gpt"]
+	path = src/ros2_gpt
+	url = https://github.com/lozanomt/ros2_gpt
